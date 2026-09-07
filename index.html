@@ -396,8 +396,11 @@ h1,h2,h3{margin:0;line-height:1.15}
         <input type="range" id="setRate" min="0.5" max="1.2" step="0.05" value="0.85">
       </div>
       <div>
-        <label for="setVoice">Voice</label>
+        <label for="setVoice">Voice <span style="font-weight:normal">(⭐ = most natural)</span></label>
         <select id="setVoice"></select>
+        <button class="btn ghost" id="btnTestVoice"
+                style="min-height:48px;margin-top:8px">🔈 Hear this voice</button>
+        <p class="tiny" id="voiceTip" style="margin:8px 0 0"></p>
       </div>
       <div>
         <label>Progress</label>
@@ -620,10 +623,16 @@ function isNoveltyVoice(name){
   const n = name.toLowerCase();
   return VOICE_BLOCKLIST.some(b => n.includes(b));
 }
+/* Apple ships low-quality "compact" voices by default; the Enhanced/Premium
+   downloads are the neural, near-human ones. Nothing in the Web Speech API
+   reports quality, so the name is the only signal available. */
+function isGoodVoice(v){ return /enhanced|premium|neural|natural/i.test(v.name); }
+function hasGoodVoice(){ return voices.some(isGoodVoice); }
+
 function voiceScore(v){
   const n = v.name.toLowerCase();
   let score = 0;
-  if(/enhanced|premium|neural|natural/.test(n)) score += 100;
+  if(isGoodVoice(v)) score += 100;
   if(VOICE_PREFERRED.some(g => n.includes(g))) score += 60;
   if(v.default) score += 20;
   if(/^en-us/i.test(v.lang)) score += 10;
@@ -645,7 +654,8 @@ function refreshVoices(){
   sel.appendChild(auto);
   voices.forEach(v=>{
     const o = document.createElement("option");
-    o.value = v.name; o.textContent = v.name + " (" + v.lang + ")";
+    o.value = v.name;
+    o.textContent = (isGoodVoice(v) ? "⭐ " : "") + v.name + " (" + v.lang + ")";
     sel.appendChild(o);
   });
   sel.value = S.voice || "";
@@ -655,19 +665,71 @@ if("speechSynthesis" in window){
   speechSynthesis.onvoiceschanged = refreshVoices;
 }
 
+/* Speech is QUEUED, never interrupted. The browser plays queued utterances
+   back to back on its own; the old code called cancel() before every phrase,
+   which chopped the previous one mid-word and made everything unintelligible.
+   `pending` lets the game wait for speech to finish before moving on. */
+let pending = 0, drainCbs = [];
+
+/* A bare word gets flat, clipped robot prosody. Ending the text with real
+   punctuation makes the engine use normal falling sentence intonation. */
+function polish(text){
+  const t = String(text).trim();
+  return /[.!?]$/.test(t) ? t : t + ".";
+}
+
 function say(text, opts){
   opts = opts || {};
   if(S.muted || !("speechSynthesis" in window) || !text) return;
   try{
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(polish(text));
     u.rate = opts.rate || S.rate;
     u.pitch = opts.pitch || 1.0;
     const v = voices.find(v => v.name === S.voice) || voices[0];
     if(v) u.voice = v;
     u.lang = (u.voice && u.voice.lang) || "en-US";
+    const done = ()=>{
+      pending = Math.max(0, pending - 1);
+      if(pending === 0) runDrain();
+    };
+    u.onend = done;
+    u.onerror = done;
+    pending++;
     speechSynthesis.speak(u);
   }catch(e){}
+}
+
+/* Use when the context changes (new question, repeat, leaving a fight):
+   the old audio is no longer wanted, so clearing it is correct here. */
+function sayNow(text, opts){
+  flushSpeech();
+  say(text, opts);
+}
+function flushSpeech(){
+  pending = 0;
+  drainCbs = [];
+  try{ if("speechSynthesis" in window) speechSynthesis.cancel(); }catch(e){}
+}
+function runDrain(){
+  const cbs = drainCbs;
+  drainCbs = [];
+  cbs.forEach(cb => cb());
+}
+
+/* Wait for the current speech to finish before advancing, but never less
+   than minMs (so the hit animation plays) and never more than maxMs
+   (iOS sometimes drops the 'end' event, and the game must not stall). */
+function advanceAfter(minMs, maxMs, cb){
+  const start = Date.now();
+  let fired = false;
+  const go = ()=>{
+    if(fired) return;
+    fired = true;
+    setTimeout(cb, Math.max(0, minMs - (Date.now() - start)));
+  };
+  if(pending === 0) go();
+  else drainCbs.push(go);
+  setTimeout(go, maxMs);
 }
 function beep(kind){
   if(S.muted) return;
@@ -841,13 +903,14 @@ function drawStreak(){
 
 function nextQuestion(){
   locked = false;
+  flushSpeech();
   B.hintUsed = false;
   $("btnHint").disabled = false;
   Q = makeQuestion(B.tier);
   $("promptText").textContent = Q.prompt;
   renderStage();
   renderChoices();
-  if(Q.speakOnAsk) setTimeout(()=> say(Q.speakOnAsk), 260);
+  if(Q.speakOnAsk) setTimeout(()=> sayNow(Q.speakOnAsk), 260);
   $("btnRepeat").style.visibility = Q.speakOnAsk ? "visible" : "hidden";
 }
 
@@ -868,7 +931,7 @@ function renderStage(){
     d.className = "bigword";
     d.textContent = "🔊 ? ? ?";
     d.style.cursor = "pointer";
-    d.onclick = ()=> say(Q.speakOnAsk);
+    d.onclick = ()=> sayNow(Q.speakOnAsk);
     st.appendChild(d);
     return;
   }
@@ -933,12 +996,12 @@ function answer(value, el){
     B.hp--;
     drawHp(); drawStreak(); save();
     say(pick(PRAISE), {rate: Math.min(1.1, S.rate + 0.15)});
-    if(Q.speakOnRight) setTimeout(()=> say(Q.speakOnRight), 900);
+    if(Q.speakOnRight) say(Q.speakOnRight);
 
-    setTimeout(()=>{
+    advanceAfter(1700, 7000, ()=>{
       if(B.hp <= 0 && !practiceMode) winFight();
       else nextQuestion();
-    }, 1700);
+    });
     return;
   }
 
@@ -952,13 +1015,13 @@ function answer(value, el){
   foeAttack();
   B.hearts--;
   drawHearts(); drawStreak(); save();
-  setTimeout(()=> say("The word is " + Q.answer), 700);
-  if(Q.speakOnRight && Q.speakOnRight !== Q.answer) setTimeout(()=> say(Q.speakOnRight), 1900);
+  say("The word is " + Q.answer);
+  if(Q.speakOnRight && Q.speakOnRight !== Q.answer) say(Q.speakOnRight);
 
-  setTimeout(()=>{
+  advanceAfter(3000, 10000, ()=>{
     if(B.hearts <= 0) breather();
     else nextQuestion();
-  }, 3000);
+  });
 }
 
 function markRight(el){ if(el) el.classList.add(el.classList.contains("tok") ? "hit" : "right"); }
@@ -1170,11 +1233,32 @@ function renderSettings(){
     S.correct + " correct · " + S.wrong + " missed · " + pct + "% right · " +
     "best streak " + S.best + " · " + S.coins + " coins";
 
+  renderVoiceTip();
+
   const list = $("missedList");
   const words = Object.entries(S.missed).sort((a,b)=> b[1]-a[1]).slice(0,14);
   list.innerHTML = words.length
     ? words.map(([w,c]) => '<span>' + w + ' ×' + c + '</span>').join("")
     : '<span class="tiny">None yet 🎉</span>';
+}
+
+function renderVoiceTip(){
+  const tip = $("voiceTip");
+  if(!tip) return;
+  const active = voices.find(v => v.name === S.voice) || voices[0];
+  const name = active ? active.name : "the system default voice";
+  if(!voices.length){
+    tip.textContent = "No speech voices found on this device.";
+  }else if(hasGoodVoice()){
+    tip.innerHTML = "Using <b>" + name + "</b>. Voices marked ⭐ are the most " +
+      "natural — choose one of those if it is not already selected.";
+  }else{
+    tip.innerHTML = "Using <b>" + name + "</b>. Only basic voices are installed here, " +
+      "and those sound robotic. On iPhone or iPad open <b>Settings → Accessibility → " +
+      "Spoken Content → Voices → English</b>, tap a voice (Ava, Evan and Zoe are good ones) " +
+      "and download the <b>Enhanced</b> or <b>Premium</b> version. Then reload this page " +
+      "and pick it above — it sounds close to Siri.";
+  }
 }
 
 function updateSoundButtons(){
@@ -1184,8 +1268,8 @@ function updateSoundButtons(){
 }
 function toggleSound(){
   S.muted = !S.muted; save(); updateSoundButtons();
-  if(S.muted && "speechSynthesis" in window) speechSynthesis.cancel();
-  else say("Sound on!");
+  if(S.muted) flushSpeech();
+  else sayNow("Sound on!");
 }
 
 /* ---------------------------------------------------------------
@@ -1201,15 +1285,14 @@ $("btnFight").onclick    = ()=> startBattle(false);
 $("btnPractice").onclick = ()=> startBattle(true);
 $("btnShop").onclick     = ()=>{ show("shop"); renderShop(); };
 $("btnShopBack").onclick = ()=>{ show("dojo"); renderDojo(); };
-$("btnQuit").onclick     = ()=>{ if("speechSynthesis" in window) speechSynthesis.cancel();
-                                 show("dojo"); renderDojo(); };
+$("btnQuit").onclick     = ()=>{ flushSpeech(); show("dojo"); renderDojo(); };
 $("btnNextFight").onclick= afterWin;
 $("btnBreathGo").onclick = ()=>{
   $("overlayBreath").classList.remove("on");
   B.hearts = HEARTS_MAX; drawHearts(); nextQuestion();
 };
 $("btnPromoGo").onclick  = ()=>{ show("dojo"); renderDojo(); };
-$("btnRepeat").onclick   = ()=>{ if(Q && Q.speakOnAsk) say(Q.speakOnAsk); };
+$("btnRepeat").onclick   = ()=>{ if(Q && Q.speakOnAsk) sayNow(Q.speakOnAsk); };
 
 /* 50/50 hint: takes one wrong answer away, once per question */
 $("btnHint").onclick = ()=>{
@@ -1234,7 +1317,17 @@ $("btnCloseSettings").onclick = ()=> $("overlaySettings").classList.remove("on")
 $("setLevel").onchange = e =>{ S.belt = +e.target.value; S.stage = 0; save(); renderDojo(); };
 $("setRate").oninput   = e =>{ S.rate = +e.target.value; $("rateVal").textContent = S.rate.toFixed(2); save(); };
 $("setRate").onchange  = ()=> say("This is my speaking speed.");
-$("setVoice").onchange = e =>{ S.voice = e.target.value; save(); say("Hello ninja!"); };
+$("setVoice").onchange = e =>{
+  S.voice = e.target.value; save();
+  renderVoiceTip();
+  sayNow("Hi ninja! I will read the words with you.");
+};
+$("btnTestVoice").onclick = ()=>{
+  const wasMuted = S.muted;
+  S.muted = false;                       // a test button should always be audible
+  sayNow("Hi ninja! Can you read this sentence with me?");
+  S.muted = wasMuted;
+};
 $("btnResetProgress").onclick = ()=>{
   if(confirm("Erase all belts, coins and ninjas, and start over?")){
     S = {...DEFAULT_STATE}; save();

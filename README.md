@@ -64,9 +64,21 @@ characters, from the starter ninja up to the 1200-coin star ninja.
 Keyboard shortcuts for a helper sitting alongside: `1` `2` `3` pick an answer,
 `R` repeats the audio.
 
-## Notes
+## Getting a natural-sounding voice
 
-Speech uses the browser's built-in text-to-speech, so voice quality varies by
-device (Chrome and Safari sound best). Tap 🔊 anywhere to mute. The first tap on
-**PLAY** is what unlocks audio on phones and tablets — that is a browser rule,
-not a bug.
+Speech uses the voices installed on the device, so quality depends on the
+device rather than the game. Apple ships low-quality "compact" voices by
+default and keeps the good neural ones as an opt-in download, which is why
+the default can sound robotic.
+
+**On iPhone or iPad:** Settings → Accessibility → Spoken Content → Voices →
+English → tap a voice (Ava, Evan and Zoe are good) → download the **Enhanced**
+or **Premium** version. Reload the game; it prefers those automatically, and
+⚙️ Settings → Voice marks them with a ⭐.
+
+The game also filters out Apple's joke voices (Albert, Zarvox, Bubbles and
+friends) so the automatic pick can never land on one, and ⚙️ Settings has a
+🔈 **Hear this voice** button to audition before handing the phone over.
+
+Tap 🔊 anywhere to mute. The first tap on **PLAY** is what unlocks audio on
+phones and tablets — that is a browser rule, not a bug.
