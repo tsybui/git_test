@@ -604,9 +604,39 @@ const clean = w => w.replace(/[^A-Za-z']/g,"").toLowerCase();
    --------------------------------------------------------------- */
 let voices = [], audioCtx = null;
 
+/* iOS/macOS ship a handful of deliberately silly "novelty" voices
+   (Albert, Zarvox, Organ...) alongside the natural ones. speechSynthesis
+   gives no quality flag, so keep them out of the pool entirely rather
+   than risk auto-picking one for a child who needs to understand every word. */
+const VOICE_BLOCKLIST = ["albert","bad news","bahh","bells","boing","bubbles",
+  "cellos","deranged","good news","hysterical","jester","organ","superstar",
+  "trinoids","whisper","wobble","zarvox","fred","rocko","junior","ralph"];
+const VOICE_PREFERRED = ["siri","ava","samantha","karen","daniel","moira",
+  "tessa","fiona","serena","kate","susan","allison","nicky","victoria",
+  "arthur","stephanie","catherine","matilda","aaron","google us english",
+  "google uk english"];
+
+function isNoveltyVoice(name){
+  const n = name.toLowerCase();
+  return VOICE_BLOCKLIST.some(b => n.includes(b));
+}
+function voiceScore(v){
+  const n = v.name.toLowerCase();
+  let score = 0;
+  if(/enhanced|premium|neural|natural/.test(n)) score += 100;
+  if(VOICE_PREFERRED.some(g => n.includes(g))) score += 60;
+  if(v.default) score += 20;
+  if(/^en-us/i.test(v.lang)) score += 10;
+  else if(/^en-gb|^en-au|^en-ie/i.test(v.lang)) score += 8;
+  else if(/^en/i.test(v.lang)) score += 5;
+  return score;
+}
+
 function refreshVoices(){
   if(!("speechSynthesis" in window)) return;
-  voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  const all = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  const clean = all.filter(v => !isNoveltyVoice(v.name));
+  voices = (clean.length ? clean : all).sort((a,b) => voiceScore(b) - voiceScore(a));
   const sel = $("setVoice");
   if(!sel) return;
   sel.innerHTML = "";
@@ -632,10 +662,9 @@ function say(text, opts){
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = opts.rate || S.rate;
-    u.pitch = opts.pitch || 1.05;
-    const v = voices.find(v => v.name === S.voice);
+    u.pitch = opts.pitch || 1.0;
+    const v = voices.find(v => v.name === S.voice) || voices[0];
     if(v) u.voice = v;
-    else if(voices.length) u.voice = voices[0];
     u.lang = (u.voice && u.voice.lang) || "en-US";
     speechSynthesis.speak(u);
   }catch(e){}
