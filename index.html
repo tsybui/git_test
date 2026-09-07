@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#12131f">
+<title>Ninja Reader — Belt Quest</title>
+<style>
+/* ---------- Base ---------- */
+:root{
+  --bg:#12131f;
+  --bg2:#1b1d2e;
+  --panel:#232640;
+  --panel2:#2c3054;
+  --ink:#f4f6ff;
+  --dim:#a9b0d6;
+  --good:#3ddc84;
+  --good-d:#1f9e5a;
+  --bad:#ff6b6b;
+  --gold:#ffce3a;
+  --accent:#57d2ff;
+  --belt:#ffffff;
+  --radius:22px;
+  --tap:#ffffff14;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:"Trebuchet MS","Verdana",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #2a2e52 0%, transparent 60%),
+    linear-gradient(180deg,#12131f 0%,#0d0e17 100%);
+  color:var(--ink);
+  overflow:hidden;
+  user-select:none;
+  -webkit-user-select:none;
+  touch-action:manipulation;
+}
+#app{position:relative;height:100dvh;width:100vw;overflow:hidden}
+.screen{
+  position:absolute;inset:0;
+  display:none;
+  flex-direction:column;
+  padding:14px clamp(12px,3vw,28px) 18px;
+  gap:12px;
+  animation:fade .28s ease both;
+}
+.screen.on{display:flex}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- Shared bits ---------- */
+.row{display:flex;align-items:center;gap:10px}
+.spacer{flex:1}
+.btn{
+  font:inherit;font-weight:bold;color:var(--ink);
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border:3px solid #ffffff22;border-radius:var(--radius);
+  padding:14px 20px;min-height:60px;cursor:pointer;
+  box-shadow:0 5px 0 #00000055, inset 0 1px 0 #ffffff1a;
+  transition:transform .08s ease, filter .15s ease;
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #00000055}
+.btn:focus-visible{outline:4px solid var(--accent);outline-offset:3px}
+.btn.big{font-size:clamp(20px,4.4vw,30px);padding:20px 34px;min-height:76px}
+.btn.go{
+  background:linear-gradient(180deg,#48e08a,#22a55f);
+  border-color:#ffffff44;
+  box-shadow:0 6px 0 #0f6b3d,inset 0 1px 0 #ffffff55;
+  color:#06240f;text-shadow:0 1px 0 #ffffff66;
+}
+.btn.gold{
+  background:linear-gradient(180deg,#ffdc6a,#f0ad14);
+  box-shadow:0 6px 0 #9b6c00,inset 0 1px 0 #ffffff66;
+  color:#3a2600;border-color:#ffffff55;
+}
+.btn.ghost{background:#ffffff10;border-color:#ffffff26;box-shadow:0 4px 0 #00000044}
+.btn.icon{min-width:60px;padding:10px 14px;font-size:24px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.pill{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#ffffff12;border:2px solid #ffffff1f;border-radius:999px;
+  padding:8px 16px;font-weight:bold;font-size:clamp(15px,3vw,20px);
+}
+h1,h2,h3{margin:0;line-height:1.15}
+.center{text-align:center}
+
+/* ---------- Belt chip ---------- */
+.belt-chip{
+  display:inline-flex;align-items:center;gap:10px;
+  background:#00000038;border-radius:999px;padding:6px 16px 6px 6px;
+  border:2px solid #ffffff1f;font-weight:bold;
+}
+.belt-swatch{
+  width:34px;height:34px;border-radius:10px;
+  background:var(--belt);
+  border:3px solid #00000055;
+  box-shadow:inset 0 0 0 2px #ffffff55;
+  position:relative;flex:none;
+}
+.belt-swatch::after{
+  content:"";position:absolute;left:-3px;right:-3px;top:50%;height:7px;
+  transform:translateY(-50%);background:#00000030;
+}
+
+/* ---------- Title screen ---------- */
+#screen-title{justify-content:center;align-items:center;text-align:center;gap:18px}
+.logo{font-size:clamp(58px,16vw,120px);line-height:1;filter:drop-shadow(0 8px 0 #0006);animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}}
+.title-main{font-size:clamp(34px,8.5vw,68px);letter-spacing:2px;
+  background:linear-gradient(180deg,#fff,#8fd8ff);-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 4px 0 #0004}
+.title-sub{color:var(--dim);font-size:clamp(15px,3.4vw,21px);max-width:24ch}
+
+/* ---------- Dojo ---------- */
+.topbar{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;flex:none}
+.topbar .belt-chip{min-width:0;overflow:hidden;white-space:nowrap}
+@media (max-width:430px){
+  .topbar .btn.icon{min-width:48px;min-height:48px;padding:8px;font-size:20px}
+  .topbar .belt-chip{font-size:14px;padding:4px 10px 4px 4px}
+  .topbar .belt-swatch{width:26px;height:26px}
+  .topbar .pill{font-size:14px;padding:6px 12px}
+}
+.dojo-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2.4vh,22px);text-align:center}
+.belt-track{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:520px}
+.belt-dot{width:26px;height:26px;border-radius:8px;border:3px solid #ffffff22;opacity:.3;transition:.2s}
+.belt-dot.done{opacity:1}
+.belt-dot.now{opacity:1;transform:scale(1.28);box-shadow:0 0 0 3px #ffffff44,0 0 18px var(--accent)}
+.stage-dots{display:flex;gap:10px;font-size:26px}
+.stage-dots span{opacity:.28}
+.stage-dots span.done{opacity:1}
+
+/* ---------- Battle ---------- */
+.arena{
+  position:relative;
+  border-radius:var(--radius);
+  background:
+    radial-gradient(60% 90% at 50% 100%, #3a2a5e55, transparent 70%),
+    linear-gradient(180deg,#20233c,#171930);
+  border:3px solid #ffffff14;
+  padding:8px 10px;
+  display:flex;align-items:flex-end;justify-content:space-between;
+  min-height:clamp(120px,22vh,210px);
+  overflow:hidden;flex:none;
+}
+.arena::after{ /* dojo floor */
+  content:"";position:absolute;left:0;right:0;bottom:0;height:26%;
+  background:linear-gradient(180deg,#00000000,#00000055),repeating-linear-gradient(90deg,#ffffff08 0 40px,#ffffff00 40px 80px);
+}
+.fighter{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;width:46%}
+.sprite{font-size:clamp(52px,13vw,104px);line-height:1;filter:drop-shadow(0 6px 0 #0005);transform-origin:50% 90%}
+.sprite.hero{animation:idle 2.2s ease-in-out infinite}
+.sprite.foe{animation:idle 2.6s ease-in-out infinite reverse}
+@keyframes idle{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.03)}}
+.attack-r{animation:atkR .5s cubic-bezier(.2,1.6,.4,1)!important}
+@keyframes atkR{0%{transform:translateX(0)}35%{transform:translateX(46%) scale(1.16) rotate(12deg)}100%{transform:translateX(0)}}
+.attack-l{animation:atkL .5s cubic-bezier(.2,1.6,.4,1)!important}
+@keyframes atkL{0%{transform:translateX(0)}35%{transform:translateX(-46%) scale(1.16) rotate(-12deg)}100%{transform:translateX(0)}}
+.hurt{animation:hurt .45s ease!important}
+@keyframes hurt{0%,100%{transform:translateX(0);filter:none}
+  20%{transform:translateX(-12px);filter:brightness(2.4) sepia(1) saturate(6) hue-rotate(-30deg)}
+  60%{transform:translateX(12px);filter:brightness(2.4) sepia(1) saturate(6) hue-rotate(-30deg)}}
+.defeated{animation:defeat .8s ease forwards!important}
+@keyframes defeat{to{transform:translateY(30px) rotate(90deg) scale(.5);opacity:0}}
+
+.hpbar{width:100%;height:16px;border-radius:999px;background:#00000055;border:2px solid #ffffff26;overflow:hidden}
+.hpfill{height:100%;width:100%;background:linear-gradient(90deg,#ff6b6b,#ffb36b);transition:width .35s ease}
+.name{font-size:clamp(12px,2.7vw,17px);font-weight:bold;color:var(--dim);letter-spacing:.5px}
+.hearts{font-size:clamp(18px,4.4vw,26px);letter-spacing:2px;min-height:1em}
+
+.fx{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font-size:clamp(44px,11vw,86px);pointer-events:none;z-index:5;opacity:0}
+.fx.play{animation:pop .6s ease}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(-20deg)}
+  40%{opacity:1;transform:translate(-50%,-50%) scale(1.25) rotate(8deg)}
+  100%{opacity:0;transform:translate(-50%,-90%) scale(1) rotate(0)}}
+.coinfly{position:absolute;font-weight:bold;font-size:clamp(20px,5vw,32px);color:var(--gold);
+  text-shadow:0 2px 0 #0007;pointer-events:none;z-index:6;animation:coinfly 1s ease forwards}
+@keyframes coinfly{0%{opacity:0;transform:translateY(0) scale(.6)}
+  25%{opacity:1;transform:translateY(-18px) scale(1.15)}
+  100%{opacity:0;transform:translateY(-72px) scale(1)}}
+
+/* ---------- Question ---------- */
+.qwrap{flex:1;display:flex;flex-direction:column;gap:clamp(8px,1.6vh,14px);min-height:0}
+.prompt{
+  font-size:clamp(14px,3.2vw,20px);color:var(--accent);font-weight:bold;
+  letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:10px;justify-content:center;
+}
+.stage{
+  background:var(--panel);border:3px solid #ffffff16;border-radius:var(--radius);
+  padding:clamp(12px,2.6vh,22px) 16px;text-align:center;
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 12px;
+  min-height:clamp(84px,15vh,150px);
+  flex:1;overflow-y:auto;
+}
+.bigword{
+  font-size:clamp(38px,10vw,78px);font-weight:bold;letter-spacing:4px;
+  text-shadow:0 4px 0 #0005;
+}
+.sentence{font-size:clamp(24px,6.4vw,46px);line-height:1.5;letter-spacing:1px;display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:center}
+.tok{padding:2px 8px;border-radius:12px;transition:.15s}
+.tok.tapable{background:#ffffff10;border:2px dashed #ffffff2e;cursor:pointer}
+.tok.tapable:active{transform:scale(.94)}
+.tok.hit{background:var(--good);color:#062a14;border-color:transparent;animation:pulse .5s ease}
+.tok.miss{background:var(--bad);color:#2a0606;border-color:transparent}
+.tok.blank{background:#ffffff1a;border-bottom:5px solid var(--accent);min-width:2.6em;border-radius:8px}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.16)}100%{transform:scale(1)}}
+
+.choices{display:grid;gap:clamp(8px,1.6vh,14px);grid-template-columns:repeat(3,1fr);flex:none}
+.choices.two{grid-template-columns:repeat(2,1fr)}
+.choice{
+  font:inherit;font-weight:bold;color:var(--ink);
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border:4px solid #ffffff20;border-radius:var(--radius);
+  padding:clamp(10px,2vh,20px) 8px;cursor:pointer;
+  box-shadow:0 6px 0 #00000055,inset 0 1px 0 #ffffff1a;
+  font-size:clamp(24px,6.4vw,44px);letter-spacing:2px;
+  min-height:clamp(72px,12vh,128px);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .08s ease;
+  word-break:break-word;
+}
+.choice.emoji{font-size:clamp(40px,12vw,80px)}
+.choice:active{transform:translateY(5px);box-shadow:0 1px 0 #00000055}
+.choice.right{background:linear-gradient(180deg,#4ceb95,#1fa25c);color:#052616;border-color:#ffffff66;animation:pulse .45s ease}
+.choice.wrong{background:linear-gradient(180deg,#ff8585,#c73b3b);color:#2a0505;border-color:#ffffff44}
+.choice.fade{opacity:.22;pointer-events:none}
+.choice:focus-visible{outline:5px solid var(--accent);outline-offset:3px}
+
+.streak{font-size:clamp(14px,3vw,20px);font-weight:bold;color:var(--gold)}
+
+/* ---------- Overlays ---------- */
+.overlay{
+  position:absolute;inset:0;z-index:50;display:none;
+  flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;
+  background:#0b0c14ee;backdrop-filter:blur(6px);padding:24px;
+}
+.overlay.on{display:flex;animation:fade .3s ease both}
+.burst{font-size:clamp(70px,20vw,150px);animation:bob 1.6s ease-in-out infinite}
+.confetti{position:absolute;font-size:26px;animation:fall linear forwards;pointer-events:none}
+@keyframes fall{from{transform:translateY(-10vh) rotate(0)}to{transform:translateY(110vh) rotate(720deg)}}
+
+/* ---------- Shop ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;overflow-y:auto;padding:4px;flex:1}
+.card{
+  background:var(--panel);border:3px solid #ffffff18;border-radius:18px;
+  padding:12px 8px;text-align:center;cursor:pointer;transition:.12s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.card:active{transform:scale(.96)}
+.card.owned{border-color:var(--good)}
+.card.equipped{border-color:var(--gold);box-shadow:0 0 0 3px #ffce3a44}
+.card.locked{opacity:.75}
+.card .face{font-size:clamp(38px,9vw,60px)}
+.card .cname{font-size:14px;font-weight:bold;color:var(--dim)}
+.card .cost{font-size:15px;font-weight:bold;color:var(--gold)}
+
+/* ---------- Settings ---------- */
+.sheet{
+  background:var(--panel);border:3px solid #ffffff20;border-radius:24px;
+  padding:20px;max-width:560px;width:100%;text-align:left;
+  max-height:82dvh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;
+}
+.sheet label{font-weight:bold;font-size:16px;color:var(--dim);display:block;margin-bottom:6px}
+.sheet select,.sheet input[type=range]{width:100%;font:inherit;padding:10px;border-radius:12px;
+  background:#ffffff12;color:var(--ink);border:2px solid #ffffff26}
+.missed{display:flex;flex-wrap:wrap;gap:8px}
+.missed span{background:#ffffff12;border:2px solid #ffffff22;border-radius:10px;padding:6px 12px;font-weight:bold}
+.tiny{font-size:13px;color:var(--dim);line-height:1.45}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ TITLE ============ -->
+  <section class="screen on" id="screen-title">
+    <div class="logo" id="titleHero">🥷</div>
+    <h1 class="title-main">NINJA READER</h1>
+    <p class="title-sub">Read the words. Land the hit. Earn your black belt.</p>
+    <button class="btn go big" id="btnPlay">▶️ PLAY</button>
+    <div class="row" style="gap:12px">
+      <button class="btn ghost icon" id="btnSoundTitle" title="Sound on/off">🔊</button>
+      <button class="btn ghost icon" id="btnSettingsTitle" title="Grown-ups">⚙️</button>
+    </div>
+  </section>
+
+  <!-- ============ DOJO ============ -->
+  <section class="screen" id="screen-dojo">
+    <div class="topbar">
+      <div class="belt-chip"><span class="belt-swatch" id="dojoSwatch"></span><span id="dojoBeltName">White Belt</span></div>
+      <div class="spacer"></div>
+      <div class="pill">🪙 <span id="dojoCoins">0</span></div>
+      <button class="btn ghost icon" id="btnSoundDojo" title="Sound on/off">🔊</button>
+      <button class="btn ghost icon" id="btnSettingsDojo" title="Grown-ups">⚙️</button>
+    </div>
+
+    <div class="dojo-body">
+      <div class="sprite hero" id="dojoHero" style="font-size:clamp(66px,17vw,120px)">🥷</div>
+      <h2 id="dojoTitle" style="font-size:clamp(22px,5.4vw,36px)">White Belt Dojo</h2>
+      <div class="stage-dots" id="dojoStages"><span>⚔️</span><span>⚔️</span><span>👑</span></div>
+      <p class="tiny" id="dojoHint" style="max-width:32ch;font-size:16px">Beat 2 fighters and the boss to earn your next belt!</p>
+      <div class="belt-track" id="beltTrack"></div>
+      <button class="btn go big" id="btnFight">⚔️ FIGHT</button>
+      <div class="row">
+        <button class="btn gold" id="btnShop">🛍️ Shop</button>
+        <button class="btn ghost" id="btnPractice">🧘 Practice</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BATTLE ============ -->
+  <section class="screen" id="screen-battle">
+    <div class="topbar">
+      <button class="btn ghost icon" id="btnQuit" title="Back to dojo">🏠</button>
+      <div class="belt-chip"><span class="belt-swatch" id="battleSwatch"></span><span id="battleBeltName">White</span></div>
+      <div class="spacer"></div>
+      <div class="streak" id="streakLabel"></div>
+      <div class="pill">🪙 <span id="battleCoins">0</span></div>
+    </div>
+
+    <div class="arena" id="arena">
+      <div class="fighter">
+        <div class="sprite hero" id="heroSprite">🥷</div>
+        <div class="hearts" id="heroHearts">❤️❤️❤️❤️❤️</div>
+        <div class="name" id="heroName">YOU</div>
+      </div>
+      <div class="fx" id="fx">💥</div>
+      <div class="fighter">
+        <div class="sprite foe" id="foeSprite">👾</div>
+        <div class="hpbar"><div class="hpfill" id="foeHp"></div></div>
+        <div class="name" id="foeName">Slime Bot</div>
+      </div>
+    </div>
+
+    <div class="qwrap">
+      <div class="prompt" id="prompt">
+        <span id="promptText">Tap the word you hear</span>
+        <button class="btn ghost icon" id="btnRepeat" style="min-height:44px;min-width:48px;padding:6px 10px" title="Say it again">🔁</button>
+        <button class="btn ghost icon" id="btnHint" style="min-height:44px;min-width:48px;padding:6px 10px" title="Take one away">💡</button>
+      </div>
+      <div class="stage" id="qstage"></div>
+      <div class="choices" id="choices"></div>
+    </div>
+
+    <div class="overlay" id="overlayBreath">
+      <div class="burst">🧘</div>
+      <h2 style="font-size:clamp(26px,6vw,42px)">Take a breath, ninja!</h2>
+      <p class="tiny" style="font-size:18px;max-width:26ch">Every ninja gets hit. Your hearts are back — keep going!</p>
+      <button class="btn go big" id="btnBreathGo">💪 Keep Fighting</button>
+    </div>
+
+    <div class="overlay" id="overlayWin">
+      <div class="burst" id="winBurst">🏆</div>
+      <h2 id="winTitle" style="font-size:clamp(26px,6.6vw,44px)">Enemy Defeated!</h2>
+      <div class="pill" style="font-size:clamp(20px,5vw,30px)">🪙 +<span id="winCoins">50</span></div>
+      <button class="btn go big" id="btnNextFight">➡️ Next</button>
+    </div>
+  </section>
+
+  <!-- ============ PROMOTION ============ -->
+  <section class="screen" id="screen-promo">
+    <div class="dojo-body">
+      <div class="burst">🎉</div>
+      <h2 style="font-size:clamp(24px,6vw,40px)">NEW BELT EARNED!</h2>
+      <div class="belt-chip" style="transform:scale(1.5);margin:18px 0">
+        <span class="belt-swatch" id="promoSwatch"></span><span id="promoName">Yellow Belt</span>
+      </div>
+      <p class="tiny" style="font-size:18px;max-width:30ch" id="promoBlurb"></p>
+      <div class="pill" style="font-size:clamp(20px,5vw,28px)">🪙 +100 bonus</div>
+      <button class="btn go big" id="btnPromoGo">🥋 Back to the Dojo</button>
+    </div>
+  </section>
+
+  <!-- ============ SHOP ============ -->
+  <section class="screen" id="screen-shop">
+    <div class="topbar">
+      <button class="btn ghost icon" id="btnShopBack">🏠</button>
+      <h2 style="font-size:clamp(20px,4.6vw,30px)">🛍️ Ninja Shop</h2>
+      <div class="spacer"></div>
+      <div class="pill">🪙 <span id="shopCoins">0</span></div>
+    </div>
+    <p class="tiny center" id="shopMsg">Tap a ninja to buy or wear it.</p>
+    <div class="grid" id="shopGrid"></div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <div class="overlay" id="overlaySettings">
+    <div class="sheet">
+      <h2>⚙️ Grown-up Settings</h2>
+      <div>
+        <label for="setLevel">Difficulty (belt level)</label>
+        <select id="setLevel"></select>
+      </div>
+      <div>
+        <label for="setRate">Speaking speed: <span id="rateVal">0.85</span>×</label>
+        <input type="range" id="setRate" min="0.5" max="1.2" step="0.05" value="0.85">
+      </div>
+      <div>
+        <label for="setVoice">Voice</label>
+        <select id="setVoice"></select>
+      </div>
+      <div>
+        <label>Progress</label>
+        <p class="tiny" id="statsLine"></p>
+      </div>
+      <div>
+        <label>Words to practise together</label>
+        <div class="missed" id="missedList"><span class="tiny">None yet 🎉</span></div>
+      </div>
+      <div class="row" style="flex-wrap:wrap">
+        <button class="btn ghost" id="btnResetProgress">🗑️ Reset progress</button>
+        <div class="spacer"></div>
+        <button class="btn go" id="btnCloseSettings">✅ Done</button>
+      </div>
+      <p class="tiny">Answers are never timed. A wrong answer always shows and says the right one before moving on.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   NINJA READER — a reading game for early readers (approx. ages 5-7)
+   Reading focus: decoding at sentence level — blends, digraphs, silent-e,
+   vowel teams, r-controlled vowels, diphthongs, soft c/g, multisyllables.
+   ========================================================================= */
+
+/* ---------------------------------------------------------------
+   1. CURRICULUM — one tier per belt, easiest first.
+   Each tier: words (with an emoji for picture questions) + sentences.
+   --------------------------------------------------------------- */
+const BELTS = [
+  {
+    name:"White", color:"#ffffff",
+    focus:"Short vowels and simple sentences",
+    words:[["cat","🐱"],["dog","🐶"],["sun","☀️"],["bus","🚌"],["fish","🐟"],["ship","🚢"],
+           ["bed","🛏️"],["pig","🐷"],["hat","🎩"],["cup","🥤"],["box","📦"],["duck","🦆"],
+           ["frog","🐸"],["web","🕸️"],["log","🪵"],["van","🚐"]],
+    sentences:["The cat sat on the red mat.","A big dog ran to the bus.",
+               "The fish is in the ship.","My pig has a fun hat.",
+               "The duck sat on a log.","A frog can hop up.",
+               "The sun is very hot.","Dad put a cup in the box."]
+  },
+  {
+    name:"Yellow", color:"#ffd84d",
+    focus:"Blends: st, tr, cr, fl, sn, gr",
+    words:[["frog","🐸"],["flag","🚩"],["star","⭐"],["snake","🐍"],["crab","🦀"],["drum","🥁"],
+           ["clock","🕐"],["truck","🚚"],["plant","🌱"],["skunk","🦨"],["grass","🌿"],["stop","🛑"],
+           ["brush","🪥"],["snail","🐌"],["swing","🛝"],["crown","👑"]],
+    sentences:["The crab hid in the tall grass.","A truck can stop very fast.",
+               "The frog jumps past the flag.","Stan bangs on his big drum.",
+               "The clock is next to my desk.","A snake slid under the plant.",
+               "Ten stars glow in the sky.","My brush fell in the sink."]
+  },
+  {
+    name:"Orange", color:"#ff9f2e",
+    focus:"Magic e: cake, bike, home",
+    words:[["cake","🍰"],["bike","🚲"],["home","🏠"],["rose","🌹"],["kite","🪁"],["nose","👃"],
+           ["snake","🐍"],["plane","✈️"],["whale","🐳"],["grape","🍇"],["slide","🛝"],["fire","🔥"],
+           ["bone","🦴"],["mice","🐭"],["cave","🕳️"],["five","5️⃣"]],
+    sentences:["I rode my bike all the way home.","The whale swam by a dark cave.",
+               "She ate a big grape cake.","A kite flew over the lake.",
+               "The plane came home late.","Five mice hid by the pine tree.",
+               "My nose can smell the rose.","Dave made a fire and ate."]
+  },
+  {
+    name:"Green", color:"#3ddc84",
+    focus:"Vowel teams: ai, ea, oa, ee",
+    words:[["rain","🌧️"],["train","🚂"],["leaf","🍃"],["tree","🌳"],["boat","⛵"],["goat","🐐"],
+           ["bee","🐝"],["seal","🦭"],["road","🛣️"],["sheep","🐑"],["queen","👑"],["peach","🍑"],
+           ["coat","🧥"],["moon","🌙"],["team","🧑‍🤝‍🧑"],["soap","🧼"]],
+    sentences:["The goat sat in the green boat.","Rain fell on the long train.",
+               "A bee sleeps in the tall tree.","We eat peaches by the sea.",
+               "The sheep ran down the road.","My team plays each day.",
+               "The queen keeps her coat clean.","A seal ate three big fish."]
+  },
+  {
+    name:"Blue", color:"#4aa8ff",
+    focus:"Two syllables and -ing, -ed endings",
+    words:[["running","🏃"],["jumping","🦘"],["rocket","🚀"],["rabbit","🐰"],["basket","🧺"],["sunset","🌇"],
+           ["muffin","🧁"],["pumpkin","🎃"],["dragon","🐲"],["tiger","🐅"],["magnet","🧲"],["helmet","⛑️"],
+           ["napkin","🧻"],["robot","🤖"],["ladder","🪜"],["puppet","🎭"]],
+    sentences:["The rabbit is hopping to the basket.","A rocket landed at sunset.",
+               "The dragon was napping in a den.","My tiger cub is running fast.",
+               "He picked a muffin and a pumpkin.","She is fixing the broken magnet.",
+               "The robot climbed a tall ladder.","Ben is wearing a red helmet."]
+  },
+  {
+    name:"Purple", color:"#b06bff",
+    focus:"Bossy r: ar, or, er, ir, ur",
+    words:[["shark","🦈"],["farm","🚜"],["bird","🐦"],["turtle","🐢"],["corn","🌽"],["fork","🍴"],
+           ["storm","⛈️"],["shirt","👕"],["girl","👧"],["nurse","👩‍⚕️"],["hammer","🔨"],["star","⭐"],
+           ["horse","🐴"],["barn","🏚️"],["purse","👛"],["burger","🍔"]],
+    sentences:["The shark swims far from the shore.","A turtle sat on the dark rock.",
+               "The bird sings before the storm.","Her shirt got dirt on it.",
+               "The farmer put corn in the barn.","Thirty stars burn in the sky.",
+               "My sister lost her purple purse.","The horse ran under the arch."]
+  },
+  {
+    name:"Brown", color:"#a3703c",
+    focus:"oo, ou, ow, oi, oy",
+    words:[["moon","🌙"],["book","📖"],["cloud","☁️"],["mouse","🐭"],["owl","🦉"],["crown","👑"],
+           ["coin","🪙"],["boy","👦"],["toys","🧸"],["spoon","🥄"],["house","🏠"],["flower","🌸"],
+           ["cookie","🍪"],["town","🏘️"],["foot","🦶"],["oil","🛢️"]],
+    sentences:["The owl found a coin in the woods.","A mouse hid in our brown house.",
+               "The boy ate a cookie with a spoon.","Clouds float over the loud town.",
+               "She found her toys by the flower.","The moon shines down on the crown.",
+               "I took my book out to the pool.","Roy joined us for soup at noon."]
+  },
+  {
+    name:"Red", color:"#ff5a5a",
+    focus:"Soft c and g, tricky endings",
+    words:[["giraffe","🦒"],["circle","⭕"],["pencil","✏️"],["bridge","🌉"],["cage","🔒"],["juice","🧃"],
+           ["dance","💃"],["magic","✨"],["village","🏘️"],["ice","🧊"],["city","🏙️"],["badge","🎖️"],
+           ["orange","🍊"],["giant","🌋"],["prince","🤴"],["candle","🕯️"]],
+    sentences:["The giant giraffe raced across the bridge.","Ice melted in my orange juice.",
+               "A gentle mouse danced in the city.","He drew a circle with his pencil.",
+               "Magic changed the cage into a castle.","The village had a huge dance.",
+               "The prince placed a candle on the stage.","She earned a shiny golden badge."]
+  },
+  {
+    name:"Black", color:"#2b2b33",
+    focus:"Master challenge: long mixed sentences",
+    words:[["ninja","🥷"],["sword","⚔️"],["tower","🗼"],["pizza","🍕"],["turtle","🐢"],["shadow","👤"],
+           ["mountain","⛰️"],["thunder","⚡"],["castle","🏰"],["dragon","🐉"],["sensei","🧑‍🏫"],["rooftop","🏘️"],
+           ["training","🥋"],["lantern","🏮"],["treasure","💎"],["forest","🌲"]],
+    sentences:["The brave ninja climbed the tallest tower before sunrise.",
+               "My little brother found a shiny sword under the wooden bridge.",
+               "Nine hungry turtles shared a giant cheese pizza.",
+               "The shadow warrior jumped over the burning rooftop.",
+               "Every morning the sensei teaches us to focus and breathe.",
+               "A thunderstorm rolled across the quiet mountain village.",
+               "The dragon guarded a treasure inside the stone castle.",
+               "Paper lanterns glowed along the path through the forest."]
+  }
+];
+
+/* Enemies get tougher-looking as belts go up. Boss closes each belt. */
+const FOES = [
+  {e:"🦠",n:"Ooze Blob"},   {e:"👾",n:"Pixel Pest"},  {e:"🤖",n:"Clank Bot"},
+  {e:"🐀",n:"Sewer Rat"},   {e:"🦂",n:"Sting Bug"},   {e:"👻",n:"Mist Spook"},
+  {e:"🦑",n:"Ink Squid"},   {e:"🐍",n:"Fang Viper"},  {e:"🕷️",n:"Web Crawler"}
+];
+const BOSSES = [
+  {e:"👹",n:"Master Grump"},  {e:"🐗",n:"Iron Tusk"},    {e:"🦖",n:"Rex Rampage"},
+  {e:"🐙",n:"Doctor Tentacle"},{e:"🦍",n:"Stone Fist"},  {e:"🧟",n:"Ooze King"},
+  {e:"🐉",n:"Storm Drake"},   {e:"👺",n:"Shadow Sensei"},{e:"💀",n:"The Skull Lord"}
+];
+
+/* Shop: hero skins bought with coins. */
+const SKINS = [
+  {id:"ninja",  e:"🥷", n:"Ninja",      cost:0},
+  {id:"turtle", e:"🐢", n:"Shell Bro",  cost:75},
+  {id:"fox",    e:"🦊", n:"Fox Kid",    cost:150},
+  {id:"robot",  e:"🤖", n:"Mech Ninja", cost:250},
+  {id:"tiger",  e:"🐯", n:"Tiger Claw", cost:400},
+  {id:"hero",   e:"🦸", n:"Super Kid",  cost:600},
+  {id:"dragon", e:"🐲", n:"Dragon Kid", cost:850},
+  {id:"alien",  e:"👽", n:"Star Ninja", cost:1200}
+];
+
+/* Words too common to be a fair "fill the blank" target. */
+const STOPWORDS = new Set(["the","a","an","and","is","in","on","of","to","it","he","she",
+  "my","was","are","for","his","her","you","we","i","at","by","up","out","all","can","had"]);
+
+/* ---------------------------------------------------------------
+   2. STATE (saved to the browser so progress sticks)
+   --------------------------------------------------------------- */
+const SAVE_KEY = "ninjaReader.v1";
+const DEFAULT_STATE = {
+  belt:0, stage:0, coins:0, skin:"ninja", owned:["ninja"],
+  muted:false, rate:0.85, voice:"",
+  correct:0, wrong:0, best:0, missed:{}
+};
+let S = load();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return {...DEFAULT_STATE};
+    return {...DEFAULT_STATE, ...JSON.parse(raw)};
+  }catch(e){ return {...DEFAULT_STATE}; }
+}
+function save(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){}
+}
+
+/* ---------------------------------------------------------------
+   3. HELPERS
+   --------------------------------------------------------------- */
+const $  = id => document.getElementById(id);
+const rnd = n => Math.floor(Math.random()*n);
+const pick = arr => arr[rnd(arr.length)];
+function shuffle(a){
+  a = a.slice();
+  for(let i=a.length-1;i>0;i--){ const j=rnd(i+1); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+const clean = w => w.replace(/[^A-Za-z']/g,"").toLowerCase();
+
+/* ---------------------------------------------------------------
+   4. SOUND — speech for words, little beeps for feedback
+   --------------------------------------------------------------- */
+let voices = [], audioCtx = null;
+
+function refreshVoices(){
+  if(!("speechSynthesis" in window)) return;
+  voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  const sel = $("setVoice");
+  if(!sel) return;
+  sel.innerHTML = "";
+  const auto = document.createElement("option");
+  auto.value = ""; auto.textContent = "Automatic";
+  sel.appendChild(auto);
+  voices.forEach(v=>{
+    const o = document.createElement("option");
+    o.value = v.name; o.textContent = v.name + " (" + v.lang + ")";
+    sel.appendChild(o);
+  });
+  sel.value = S.voice || "";
+}
+if("speechSynthesis" in window){
+  refreshVoices();
+  speechSynthesis.onvoiceschanged = refreshVoices;
+}
+
+function say(text, opts){
+  opts = opts || {};
+  if(S.muted || !("speechSynthesis" in window) || !text) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = opts.rate || S.rate;
+    u.pitch = opts.pitch || 1.05;
+    const v = voices.find(v => v.name === S.voice);
+    if(v) u.voice = v;
+    else if(voices.length) u.voice = voices[0];
+    u.lang = (u.voice && u.voice.lang) || "en-US";
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function beep(kind){
+  if(S.muted) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const notes = kind==="good" ? [523,659,784] : kind==="bad" ? [220,175] :
+                  kind==="coin" ? [880,1175]    : [440];
+    notes.forEach((f,i)=>{
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = kind==="bad" ? "sawtooth" : "triangle";
+      o.frequency.value = f;
+      const t = audioCtx.currentTime + i*0.09;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.18, t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.22);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t); o.stop(t+0.25);
+    });
+  }catch(e){}
+}
+
+/* ---------------------------------------------------------------
+   5. QUESTION BUILDER
+   Four kinds, weighted toward sentence-level reading:
+     find    - hear a word, tap it inside a sentence
+     blank   - choose the word that completes a sentence
+     picture - read a word, tap the matching picture
+     listen  - hear a word, tap the matching spelling
+   --------------------------------------------------------------- */
+const QTYPES = ["find","blank","find","picture","blank","listen","find","blank"];
+let lastType = "";
+
+/* Distractors: prefer words that look similar (same start / same length),
+   because that is what forces real decoding instead of guessing. */
+function distractors(target, pool, n){
+  const t = clean(target);
+  const cands = pool.map(clean).filter(w => w !== t && w.length > 1);
+  const uniq = [...new Set(cands)];
+  const scored = uniq.map(w=>{
+    let score = 0;
+    if(w[0] === t[0]) score += 3;
+    if(w[w.length-1] === t[t.length-1]) score += 2;
+    score += 3 - Math.min(3, Math.abs(w.length - t.length));
+    return {w, score:score + Math.random()*2};
+  }).sort((a,b)=> b.score - a.score);
+  return scored.slice(0, n).map(o => o.w);
+}
+
+function tierPool(tier){
+  const words = BELTS[tier].words.map(w => w[0]);
+  const prev  = tier > 0 ? BELTS[tier-1].words.map(w => w[0]) : [];
+  return words.concat(prev);
+}
+
+function makeQuestion(tier){
+  const belt = BELTS[tier];
+  let type = pick(QTYPES);
+  if(type === lastType) type = pick(QTYPES);   // avoid three in a row
+  lastType = type;
+
+  if(type === "picture"){
+    const withPics = belt.words.filter(w => w[1]);
+    const target = pick(withPics);
+    const others = shuffle(withPics.filter(w => w[0] !== target[0])).slice(0,2);
+    return {
+      type, prompt:"Read it — tap the picture",
+      show:{kind:"word", text:target[0]},
+      choices: shuffle([target, ...others]).map(w => ({label:w[1], value:w[0], emoji:true})),
+      answer: target[0],
+      speakOnAsk: null,               // no giveaway: he must decode it
+      speakOnRight: target[0]
+    };
+  }
+
+  if(type === "listen"){
+    const target = clean(pick(belt.words)[0]);
+    const others = distractors(target, tierPool(tier), 2);
+    return {
+      type, prompt:"Listen — tap the word",
+      show:{kind:"ear"},
+      choices: shuffle([target, ...others]).map(w => ({label:w, value:w})),
+      answer: target,
+      speakOnAsk: target,
+      speakOnRight: target
+    };
+  }
+
+  const sentence = pick(belt.sentences);
+  const tokens = sentence.split(" ").map(raw => ({raw, clean:clean(raw)}));
+  const options = tokens
+    .map((t,i)=>({t,i}))
+    .filter(o => o.t.clean.length >= 3 && !STOPWORDS.has(o.t.clean));
+  const chosen = pick(options.length ? options : tokens.map((t,i)=>({t,i})));
+
+  if(type === "blank"){
+    const others = distractors(chosen.t.clean, tierPool(tier), 2);
+    const spoken = tokens.map((t,i)=> i === chosen.i ? "blank" : t.raw).join(" ");
+    return {
+      type, prompt:"Which word fits?",
+      show:{kind:"sentence", tokens, blankAt: chosen.i},
+      choices: shuffle([chosen.t.clean, ...others]).map(w => ({label:w, value:w})),
+      answer: chosen.t.clean,
+      speakOnAsk: spoken,
+      speakOnRight: sentence
+    };
+  }
+
+  /* find: tap the spoken word inside the sentence */
+  return {
+    type:"find", prompt:"Find the word you hear",
+    show:{kind:"sentence", tokens, tapAt: chosen.i},
+    choices: null,
+    answer: chosen.t.clean,
+    speakOnAsk: chosen.t.clean,
+    speakOnRight: sentence
+  };
+}
+
+/* ---------------------------------------------------------------
+   6. BATTLE
+   2 regular fighters + 1 boss per belt. Hits needed scale a little.
+   Losing all hearts never loses progress — it just pauses for a breath.
+   --------------------------------------------------------------- */
+const HEARTS_MAX = 5;
+const PRAISE = ["Nice hit!","Great reading!","Boom!","You got it!","Sharp eyes!","Ninja power!","Perfect!"];
+
+let B = null;      // current battle
+let Q = null;      // current question
+let locked = false;
+let practiceMode = false;
+
+function foeFor(tier, stage){
+  if(stage === 2){
+    const b = BOSSES[Math.min(tier, BOSSES.length-1)];
+    return {emoji:b.e, name:b.n, hp:6, boss:true};
+  }
+  const f = FOES[(tier + stage) % FOES.length];
+  return {emoji:f.e, name:f.n, hp:4, boss:false};
+}
+
+function startBattle(practice){
+  practiceMode = !!practice;
+  const tier = S.belt;
+  const foe = practiceMode
+    ? {emoji:"🎯", name:"Practice Dummy", hp:99, boss:false}
+    : foeFor(tier, S.stage);
+  B = {tier, foe, hp:foe.hp, maxHp:foe.hp, hearts:HEARTS_MAX, streak:0, earned:0, hintUsed:false};
+
+  $("foeSprite").textContent = foe.emoji;
+  $("foeSprite").className = "sprite foe";
+  $("foeName").textContent = foe.name.toUpperCase();
+  $("heroSprite").textContent = skinEmoji();
+  $("heroSprite").className = "sprite hero";
+  setBeltVars($("battleSwatch"), tier);
+  $("battleBeltName").textContent = BELTS[tier].name;
+  drawHp(); drawHearts(); drawStreak();
+  show("battle");
+  nextQuestion();
+}
+
+function drawHp(){
+  $("foeHp").style.width = Math.max(0, (B.hp / B.maxHp) * 100) + "%";
+}
+function drawHearts(){
+  $("heroHearts").textContent = "❤️".repeat(B.hearts) + "🖤".repeat(HEARTS_MAX - B.hearts);
+}
+function drawStreak(){
+  $("streakLabel").textContent = B.streak >= 2 ? "🔥 " + B.streak + " in a row!" : "";
+  $("battleCoins").textContent = S.coins;
+}
+
+function nextQuestion(){
+  locked = false;
+  B.hintUsed = false;
+  $("btnHint").disabled = false;
+  Q = makeQuestion(B.tier);
+  $("promptText").textContent = Q.prompt;
+  renderStage();
+  renderChoices();
+  if(Q.speakOnAsk) setTimeout(()=> say(Q.speakOnAsk), 260);
+  $("btnRepeat").style.visibility = Q.speakOnAsk ? "visible" : "hidden";
+}
+
+function renderStage(){
+  const st = $("qstage");
+  st.innerHTML = "";
+  const s = Q.show;
+
+  if(s.kind === "word"){
+    const d = document.createElement("div");
+    d.className = "bigword";
+    d.textContent = s.text;
+    st.appendChild(d);
+    return;
+  }
+  if(s.kind === "ear"){
+    const d = document.createElement("div");
+    d.className = "bigword";
+    d.textContent = "🔊 ? ? ?";
+    d.style.cursor = "pointer";
+    d.onclick = ()=> say(Q.speakOnAsk);
+    st.appendChild(d);
+    return;
+  }
+  /* sentence */
+  const wrap = document.createElement("div");
+  wrap.className = "sentence";
+  s.tokens.forEach((t,i)=>{
+    const el = document.createElement("span");
+    el.className = "tok";
+    if(s.blankAt === i){
+      el.classList.add("blank");
+      el.textContent = "＿＿";
+      el.dataset.blank = "1";
+    }else{
+      el.textContent = t.raw;
+    }
+    if(Q.type === "find"){
+      el.classList.add("tapable");
+      el.onclick = ()=> answer(t.clean, el);
+    }
+    wrap.appendChild(el);
+  });
+  st.appendChild(wrap);
+}
+
+function renderChoices(){
+  const box = $("choices");
+  box.innerHTML = "";
+  if(!Q.choices){
+    box.style.display = "none";
+    $("btnHint").style.visibility = "hidden";
+    return;
+  }
+  box.style.display = "grid";
+  $("btnHint").style.visibility = "visible";
+  box.classList.toggle("two", Q.choices.length === 2);
+  Q.choices.forEach(c=>{
+    const b = document.createElement("button");
+    b.className = "choice" + (c.emoji ? " emoji" : "");
+    b.textContent = c.label;
+    b.dataset.value = c.value;
+    b.onclick = ()=> answer(c.value, b);
+    box.appendChild(b);
+  });
+}
+
+function answer(value, el){
+  if(locked) return;
+  locked = true;
+  const right = value === Q.answer;
+
+  if(right){
+    S.correct++;
+    B.streak++;
+    if(B.streak > S.best) S.best = B.streak;
+    markRight(el);
+    beep("good");
+    const coins = 10 + Math.min(15, Math.max(0, (B.streak - 1) * 5));
+    S.coins += coins; B.earned += coins;
+    coinPop(coins);
+    heroAttack();
+    B.hp--;
+    drawHp(); drawStreak(); save();
+    say(pick(PRAISE), {rate: Math.min(1.1, S.rate + 0.15)});
+    if(Q.speakOnRight) setTimeout(()=> say(Q.speakOnRight), 900);
+
+    setTimeout(()=>{
+      if(B.hp <= 0 && !practiceMode) winFight();
+      else nextQuestion();
+    }, 1700);
+    return;
+  }
+
+  /* Wrong: never rushed, never scary. Show + say the right answer. */
+  S.wrong++;
+  B.streak = 0;
+  S.missed[Q.answer] = (S.missed[Q.answer] || 0) + 1;
+  markWrong(el);
+  revealAnswer();
+  beep("bad");
+  foeAttack();
+  B.hearts--;
+  drawHearts(); drawStreak(); save();
+  setTimeout(()=> say("The word is " + Q.answer), 700);
+  if(Q.speakOnRight && Q.speakOnRight !== Q.answer) setTimeout(()=> say(Q.speakOnRight), 1900);
+
+  setTimeout(()=>{
+    if(B.hearts <= 0) breather();
+    else nextQuestion();
+  }, 3000);
+}
+
+function markRight(el){ if(el) el.classList.add(el.classList.contains("tok") ? "hit" : "right"); }
+function markWrong(el){ if(el) el.classList.add(el.classList.contains("tok") ? "miss" : "wrong"); }
+
+function revealAnswer(){
+  document.querySelectorAll("#choices .choice").forEach(b=>{
+    if(b.dataset.value === Q.answer) b.classList.add("right");
+  });
+  document.querySelectorAll("#qstage .tok").forEach(t=>{
+    if(Q.type === "find" && clean(t.textContent) === Q.answer) t.classList.add("hit");
+  });
+  if(Q.show.blankAt != null){
+    const toks = $("qstage").querySelectorAll(".tok");
+    const blank = toks[Q.show.blankAt];
+    if(blank){ blank.textContent = Q.answer; blank.classList.add("hit"); }
+  }
+}
+
+function heroAttack(){
+  const h = $("heroSprite"), f = $("foeSprite");
+  h.classList.remove("attack-r"); void h.offsetWidth; h.classList.add("attack-r");
+  setTimeout(()=>{
+    f.classList.remove("hurt"); void f.offsetWidth; f.classList.add("hurt");
+    fx(pick(["💥","⚡","🌟","👊"]));
+  }, 180);
+}
+function foeAttack(){
+  const h = $("heroSprite"), f = $("foeSprite");
+  f.classList.remove("attack-l"); void f.offsetWidth; f.classList.add("attack-l");
+  setTimeout(()=>{
+    h.classList.remove("hurt"); void h.offsetWidth; h.classList.add("hurt");
+    fx("💢");
+  }, 180);
+}
+function fx(sym){
+  const e = $("fx");
+  e.textContent = sym;
+  e.classList.remove("play"); void e.offsetWidth; e.classList.add("play");
+}
+function coinPop(n){
+  const el = document.createElement("div");
+  el.className = "coinfly";
+  el.textContent = "+" + n + " 🪙";
+  el.style.left = "18%"; el.style.top = "30%";
+  $("arena").appendChild(el);
+  beep("coin");
+  setTimeout(()=> el.remove(), 1100);
+}
+
+function breather(){
+  $("overlayBreath").classList.add("on");
+  say("Take a breath, ninja. You can do it.");
+}
+function winFight(){
+  $("foeSprite").classList.add("defeated");
+  const boss = B.foe.boss;
+  const bonus = boss ? 50 : 25;
+  S.coins += bonus; save();
+  $("winBurst").textContent = boss ? "🏆" : "⭐";
+  $("winTitle").textContent = boss ? B.foe.name + " defeated!" : "Enemy defeated!";
+  $("winCoins").textContent = B.earned + bonus;
+  setTimeout(()=>{
+    $("overlayWin").classList.add("on");
+    confetti(boss ? 30 : 12);
+    beep("good");
+    say(boss ? "You beat the boss! Amazing reading!" : "Enemy defeated! Great work!");
+  }, 700);
+}
+
+function afterWin(){
+  $("overlayWin").classList.remove("on");
+  const wasBoss = B.foe.boss;
+  if(wasBoss){
+    S.stage = 0;
+    if(S.belt < BELTS.length - 1){ S.belt++; S.coins += 100; save(); promote(); }
+    else { save(); show("dojo"); renderDojo(); say("You are a black belt master ninja!"); }
+  }else{
+    S.stage++; save();
+    startBattle(false);
+  }
+}
+
+function promote(){
+  setBeltVars($("promoSwatch"), S.belt);
+  $("promoName").textContent = BELTS[S.belt].name + " Belt";
+  $("promoBlurb").textContent = "New training: " + BELTS[S.belt].focus + ".";
+  show("promo");
+  confetti(40);
+  say("Congratulations! You earned your " + BELTS[S.belt].name + " belt!");
+}
+
+function confetti(n){
+  const bits = ["🎉","⭐","🪙","✨","🥋","💥"];
+  for(let i=0;i<n;i++){
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.textContent = pick(bits);
+    c.style.left = Math.random()*100 + "vw";
+    c.style.animationDuration = (1.6 + Math.random()*1.6) + "s";
+    c.style.animationDelay = (Math.random()*0.6) + "s";
+    document.body.appendChild(c);
+    setTimeout(()=> c.remove(), 3600);
+  }
+}
+
+/* ---------------------------------------------------------------
+   7. SCREENS & UI
+   --------------------------------------------------------------- */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("on"));
+  $("screen-" + id).classList.add("on");
+  document.querySelectorAll(".overlay").forEach(o=>{
+    if(o.id !== "overlaySettings") o.classList.remove("on");
+  });
+}
+function skinEmoji(){
+  const s = SKINS.find(s => s.id === S.skin);
+  return s ? s.e : "🥷";
+}
+function setBeltVars(el, tier){
+  el.style.setProperty("--belt", BELTS[tier].color);
+  el.style.background = BELTS[tier].color;
+}
+
+function renderDojo(){
+  const belt = BELTS[S.belt];
+  setBeltVars($("dojoSwatch"), S.belt);
+  $("dojoBeltName").textContent = belt.name + " Belt";
+  $("dojoTitle").textContent = belt.name + " Belt Dojo";
+  $("dojoHint").textContent = "Training: " + belt.focus;
+  $("dojoCoins").textContent = S.coins;
+  $("dojoHero").textContent = skinEmoji();
+  $("titleHero").textContent = skinEmoji();
+
+  const dots = $("dojoStages").children;
+  for(let i=0;i<dots.length;i++) dots[i].classList.toggle("done", i < S.stage);
+
+  const track = $("beltTrack");
+  track.innerHTML = "";
+  BELTS.forEach((b,i)=>{
+    const d = document.createElement("div");
+    d.className = "belt-dot" + (i < S.belt ? " done" : "") + (i === S.belt ? " now" : "");
+    d.style.background = b.color;
+    d.title = b.name + " Belt";
+    track.appendChild(d);
+  });
+
+  const isBoss = S.stage === 2;
+  $("btnFight").textContent = isBoss ? "👑 BOSS FIGHT" : "⚔️ FIGHT";
+}
+
+function renderShop(){
+  $("shopCoins").textContent = S.coins;
+  const g = $("shopGrid");
+  g.innerHTML = "";
+  SKINS.forEach(sk=>{
+    const owned = S.owned.includes(sk.id);
+    const equipped = S.skin === sk.id;
+    const card = document.createElement("div");
+    card.className = "card" + (owned ? " owned" : " locked") + (equipped ? " equipped" : "");
+    card.innerHTML =
+      '<div class="face">' + (owned ? sk.e : "❓") + '</div>' +
+      '<div class="cname">' + sk.n + '</div>' +
+      '<div class="cost">' + (equipped ? "WEARING" : owned ? "TAP TO WEAR" : "🪙 " + sk.cost) + '</div>';
+    card.onclick = ()=> buyOrWear(sk);
+    g.appendChild(card);
+  });
+}
+
+function buyOrWear(sk){
+  if(S.owned.includes(sk.id)){
+    S.skin = sk.id; save(); beep("coin");
+    $("shopMsg").textContent = "You are wearing " + sk.n + "!";
+    say("Nice, " + sk.n + "!");
+  }else if(S.coins >= sk.cost){
+    S.coins -= sk.cost;
+    S.owned.push(sk.id);
+    S.skin = sk.id; save();
+    beep("good"); confetti(14);
+    $("shopMsg").textContent = "Unlocked " + sk.n + "!";
+    say("You unlocked " + sk.n + "!");
+  }else{
+    beep("bad");
+    const need = sk.cost - S.coins;
+    $("shopMsg").textContent = "Need " + need + " more coins — go win a fight!";
+    say("You need " + need + " more coins.");
+  }
+  renderShop();
+}
+
+function renderSettings(){
+  const sel = $("setLevel");
+  sel.innerHTML = "";
+  BELTS.forEach((b,i)=>{
+    const o = document.createElement("option");
+    o.value = i;
+    o.textContent = (i+1) + ". " + b.name + " — " + b.focus;
+    sel.appendChild(o);
+  });
+  sel.value = S.belt;
+  $("setRate").value = S.rate;
+  $("rateVal").textContent = Number(S.rate).toFixed(2);
+  refreshVoices();
+
+  const total = S.correct + S.wrong;
+  const pct = total ? Math.round(S.correct / total * 100) : 0;
+  $("statsLine").textContent =
+    S.correct + " correct · " + S.wrong + " missed · " + pct + "% right · " +
+    "best streak " + S.best + " · " + S.coins + " coins";
+
+  const list = $("missedList");
+  const words = Object.entries(S.missed).sort((a,b)=> b[1]-a[1]).slice(0,14);
+  list.innerHTML = words.length
+    ? words.map(([w,c]) => '<span>' + w + ' ×' + c + '</span>').join("")
+    : '<span class="tiny">None yet 🎉</span>';
+}
+
+function updateSoundButtons(){
+  const icon = S.muted ? "🔇" : "🔊";
+  $("btnSoundTitle").textContent = icon;
+  $("btnSoundDojo").textContent = icon;
+}
+function toggleSound(){
+  S.muted = !S.muted; save(); updateSoundButtons();
+  if(S.muted && "speechSynthesis" in window) speechSynthesis.cancel();
+  else say("Sound on!");
+}
+
+/* ---------------------------------------------------------------
+   8. WIRING
+   --------------------------------------------------------------- */
+$("btnPlay").onclick = ()=>{
+  beep("coin");
+  /* first tap unlocks audio on mobile browsers */
+  if(!S.muted) say("Let's train!");
+  show("dojo"); renderDojo();
+};
+$("btnFight").onclick    = ()=> startBattle(false);
+$("btnPractice").onclick = ()=> startBattle(true);
+$("btnShop").onclick     = ()=>{ show("shop"); renderShop(); };
+$("btnShopBack").onclick = ()=>{ show("dojo"); renderDojo(); };
+$("btnQuit").onclick     = ()=>{ if("speechSynthesis" in window) speechSynthesis.cancel();
+                                 show("dojo"); renderDojo(); };
+$("btnNextFight").onclick= afterWin;
+$("btnBreathGo").onclick = ()=>{
+  $("overlayBreath").classList.remove("on");
+  B.hearts = HEARTS_MAX; drawHearts(); nextQuestion();
+};
+$("btnPromoGo").onclick  = ()=>{ show("dojo"); renderDojo(); };
+$("btnRepeat").onclick   = ()=>{ if(Q && Q.speakOnAsk) say(Q.speakOnAsk); };
+
+/* 50/50 hint: takes one wrong answer away, once per question */
+$("btnHint").onclick = ()=>{
+  if(!Q || !Q.choices || B.hintUsed || locked) return;
+  const wrongs = [...document.querySelectorAll("#choices .choice")]
+    .filter(b => b.dataset.value !== Q.answer && !b.classList.contains("fade"));
+  if(wrongs.length > 1){
+    pick(wrongs).classList.add("fade");
+    B.hintUsed = true;
+    $("btnHint").disabled = true;
+    beep("blip");
+  }
+};
+
+$("btnSoundTitle").onclick = toggleSound;
+$("btnSoundDojo").onclick  = toggleSound;
+
+[["btnSettingsTitle"],["btnSettingsDojo"]].forEach(([id])=>{
+  $(id).onclick = ()=>{ renderSettings(); $("overlaySettings").classList.add("on"); };
+});
+$("btnCloseSettings").onclick = ()=> $("overlaySettings").classList.remove("on");
+$("setLevel").onchange = e =>{ S.belt = +e.target.value; S.stage = 0; save(); renderDojo(); };
+$("setRate").oninput   = e =>{ S.rate = +e.target.value; $("rateVal").textContent = S.rate.toFixed(2); save(); };
+$("setRate").onchange  = ()=> say("This is my speaking speed.");
+$("setVoice").onchange = e =>{ S.voice = e.target.value; save(); say("Hello ninja!"); };
+$("btnResetProgress").onclick = ()=>{
+  if(confirm("Erase all belts, coins and ninjas, and start over?")){
+    S = {...DEFAULT_STATE}; save();
+    renderSettings(); renderDojo(); updateSoundButtons();
+    $("overlaySettings").classList.remove("on");
+    show("title");
+  }
+};
+
+/* One-shot fight animations hand control back to the idle bob. */
+["heroSprite","foeSprite"].forEach(id=>{
+  $(id).addEventListener("animationend", e=>{
+    if(["atkR","atkL","hurt"].includes(e.animationName)){
+      $(id).classList.remove("attack-r","attack-l","hurt");
+    }
+  });
+});
+
+/* Keyboard: 1/2/3 pick a choice, R repeats, so a grown-up can help fast. */
+document.addEventListener("keydown", e=>{
+  if(!$("screen-battle").classList.contains("on")) return;
+  const btns = [...document.querySelectorAll("#choices .choice")];
+  if(["1","2","3"].includes(e.key) && btns[+e.key-1]) btns[+e.key-1].click();
+  if(e.key.toLowerCase() === "r") $("btnRepeat").click();
+});
+
+/* Keep speech alive in Chrome, which pauses long-idle synths. */
+setInterval(()=>{
+  if("speechSynthesis" in window && !speechSynthesis.speaking && speechSynthesis.paused){
+    speechSynthesis.resume();
+  }
+}, 5000);
+
+/* Boot */
+updateSoundButtons();
+renderDojo();
+$("titleHero").textContent = skinEmoji();
+</script>
+</body>
+</html>
