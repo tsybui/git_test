@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#12131f">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ninja Reader">
+<meta name="description" content="A ninja battle reading game for early readers. Read the words, land the hit, earn your black belt.">
 <title>Ninja Reader — Belt Quest</title>
 <style>
 /* ---------- Base ---------- */
@@ -1360,6 +1368,14 @@ setInterval(()=>{
     speechSynthesis.resume();
   }
 }, 5000);
+
+/* Offline support. Only over http(s) — opening index.html straight from
+   disk has no origin for a worker scope, and must still just work. */
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  });
+}
 
 /* Boot */
 updateSoundButtons();

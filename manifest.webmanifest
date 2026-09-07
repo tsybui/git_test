@@ -1,0 +1,16 @@
+{
+  "name": "Ninja Reader — Belt Quest",
+  "short_name": "Ninja Reader",
+  "description": "A ninja battle reading game. Read the words, land the hit, earn your black belt.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12131f",
+  "theme_color": "#12131f",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
