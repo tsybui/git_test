@@ -82,3 +82,29 @@ friends) so the automatic pick can never land on one, and ⚙️ Settings has a
 
 Tap 🔊 anywhere to mute. The first tap on **PLAY** is what unlocks audio on
 phones and tablets — that is a browser rule, not a bug.
+
+## Hosting it privately
+
+The game is a static site: any static host works, and no server, database or
+API key is involved. The `_headers` and `robots.txt` files ask search engines
+not to index it, so the address is only reachable by someone you send it to.
+
+Easiest route (no GitHub connection, so the URL reveals nothing about your
+other projects):
+
+1. Go to **app.netlify.com/drop**
+2. Drag the site folder (or `ninja-reader-site.zip`) onto the page
+3. It deploys immediately and gives you a URL
+4. Claim the site to a free account, then rename it under
+   **Site settings → Change site name** to get something like
+   `ninja-reader.netlify.app`
+
+Cloudflare Pages (**dash.cloudflare.com → Workers & Pages → Create → Upload
+assets**) works the same way and additionally offers **Cloudflare Access** on
+its free tier, which puts a real email-based login in front of the site if an
+unlisted URL is not private enough.
+
+To ship an update, drag the folder again — or, on a Git-connected site, push.
+The service worker is network-first for the page, so returning players pick up
+the new version on their next visit.
+
